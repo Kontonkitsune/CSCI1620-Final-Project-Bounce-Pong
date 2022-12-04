@@ -14,7 +14,7 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
 
-# globals
+# global constants
 WIDTH = 600
 HEIGHT = 400
 BALL_RADIUS = 20
@@ -26,12 +26,14 @@ GRAVITY = 0.1
 SPEED_CONSTANT = 4
 PADDLE_SPEED = 8
 
+# global variables
+paddle_speed = PADDLE_SPEED
 gravity = GRAVITY
 ball_speed = SPEED_CONSTANT
 ball_pos = [0, 0]
 ball_vel = [0, 0]
-paddle1_vel = 0
-paddle2_vel = 0
+paddle1_pos = 0
+paddle2_pos = 0
 l_score = 0
 r_score = 0
 
@@ -43,13 +45,13 @@ pygame.display.set_caption('Hello World')
 # helper function that spawns a ball, returns a position vector and a velocity vector
 # if right is True, spawn to the right, else spawn to the left
 def ball_init(right):
-    global ball_pos, ball_vel, ball_speed  # these are vectors stored as lists
+    global ball_pos, ball_vel, ball_speed, gravity  # these are vectors stored as lists
     ball_speed = SPEED_CONSTANT
     ball_pos = [WIDTH // 2, HEIGHT // 2]
     ball_direction = random.random() * math.pi / 4
     horizontal_momentum = ball_speed * math.cos(ball_direction)
     vertical_momentum = ball_speed * math.sin(ball_direction)
-
+    gravity = GRAVITY
     '''horz = random.randrange(2, 4)
     vert = random.randrange(1, 3)'''
 
@@ -57,6 +59,13 @@ def ball_init(right):
         horizontal_momentum = - horizontal_momentum
 
     ball_vel = [horizontal_momentum, vertical_momentum]
+
+
+def ante_up():
+    global ball_speed, paddle_speed, gravity
+    ball_speed += 0.5
+    paddle_speed += 0.5
+    gravity += 0.02
 
 
 # define event handlers
@@ -73,18 +82,38 @@ def init():
         ball_init(False)
 
 
-# draw function of canvas
-def draw(canvas):
-    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed
+# This is a simplification, even though it's annoying to be out of the main movement loop.
+def movement():
+    global paddle1_pos, paddle2_pos
 
-    canvas.fill(BLACK)
-    pygame.draw.line(canvas, WHITE, [WIDTH / 2, 0], [WIDTH / 2, HEIGHT], 1)
-    pygame.draw.line(canvas, WHITE, [PAD_WIDTH, 0], [PAD_WIDTH, HEIGHT], 1)
-    pygame.draw.line(canvas, WHITE, [WIDTH - PAD_WIDTH, 0], [WIDTH - PAD_WIDTH, HEIGHT], 1)
-    pygame.draw.circle(canvas, WHITE, [WIDTH // 2, HEIGHT // 2], 70, 1)
+    keys = pygame.key.get_pressed()
+
+    if keys[K_UP] and paddle2_pos[1] > HALF_PAD_HEIGHT:
+        paddle2_pos[1] -= PADDLE_SPEED
+        if paddle2_pos[1] < HALF_PAD_HEIGHT:
+            paddle2_pos[1] = HALF_PAD_HEIGHT
+    if keys[K_DOWN] and paddle2_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
+        paddle2_pos[1] += PADDLE_SPEED
+        if paddle2_pos[1] > HEIGHT - HALF_PAD_HEIGHT:
+            paddle2_pos[1] = HEIGHT - HALF_PAD_HEIGHT
+    if keys[K_w] and paddle1_pos[1] > HALF_PAD_HEIGHT:
+        paddle1_pos[1] -= PADDLE_SPEED
+        if paddle1_pos[1] < HALF_PAD_HEIGHT:
+            paddle1_pos[1] = HALF_PAD_HEIGHT
+    if keys[K_s] and paddle1_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
+        paddle1_pos[1] += PADDLE_SPEED
+        if paddle1_pos[1] > HEIGHT - HALF_PAD_HEIGHT:
+            paddle1_pos[1] = HEIGHT - HALF_PAD_HEIGHT
+
+
+def game_processing():
+    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity
+
+
 
     # update paddle's vertical position, keep paddle on the screen
-    if HALF_PAD_HEIGHT < paddle1_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
+    movement()
+    '''if HALF_PAD_HEIGHT < paddle1_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
         paddle1_pos[1] += paddle1_vel
     elif paddle1_pos[1] == HALF_PAD_HEIGHT and paddle1_vel > 0:
         paddle1_pos[1] += paddle1_vel
@@ -96,25 +125,12 @@ def draw(canvas):
     elif paddle2_pos[1] == HALF_PAD_HEIGHT and paddle2_vel > 0:
         paddle2_pos[1] += paddle2_vel
     elif paddle2_pos[1] == HEIGHT - HALF_PAD_HEIGHT and paddle2_vel < 0:
-        paddle2_pos[1] += paddle2_vel
+        paddle2_pos[1] += paddle2_vel'''
 
     # update ball
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
-
-    # gravity calculation
     ball_vel[1] += GRAVITY
-
-    # draw paddles and ball
-    pygame.draw.circle(canvas, RED, ball_pos, 20, 0)
-    pygame.draw.polygon(canvas, GREEN, [[paddle1_pos[0] - HALF_PAD_WIDTH, paddle1_pos[1] - HALF_PAD_HEIGHT],
-                                        [paddle1_pos[0] - HALF_PAD_WIDTH, paddle1_pos[1] + HALF_PAD_HEIGHT],
-                                        [paddle1_pos[0] + HALF_PAD_WIDTH, paddle1_pos[1] + HALF_PAD_HEIGHT],
-                                        [paddle1_pos[0] + HALF_PAD_WIDTH, paddle1_pos[1] - HALF_PAD_HEIGHT]], 0)
-    pygame.draw.polygon(canvas, GREEN, [[paddle2_pos[0] - HALF_PAD_WIDTH, paddle2_pos[1] - HALF_PAD_HEIGHT],
-                                        [paddle2_pos[0] - HALF_PAD_WIDTH, paddle2_pos[1] + HALF_PAD_HEIGHT],
-                                        [paddle2_pos[0] + HALF_PAD_WIDTH, paddle2_pos[1] + HALF_PAD_HEIGHT],
-                                        [paddle2_pos[0] + HALF_PAD_WIDTH, paddle2_pos[1] - HALF_PAD_HEIGHT]], 0)
 
     # ball collision check on top and bottom walls
     if int(ball_pos[1]) <= BALL_RADIUS:
@@ -136,7 +152,7 @@ def draw(canvas):
         storageval1 = math.radians(ball_pos[1] - paddle1_pos[1])
         ball_vel[1] = ball_speed * math.sin(storageval1)
         ball_vel[0] = ball_speed * math.cos(storageval1)
-        ball_speed *= 1.1
+        ante_up()
 
     # right collider
     if int(ball_pos[0]) >= WIDTH - 1:
@@ -147,7 +163,29 @@ def draw(canvas):
         storageval1 = math.radians(ball_pos[1] - paddle2_pos[1])
         ball_vel[1] = ball_speed * math.sin(storageval1)
         ball_vel[0] = - ball_speed * math.cos(storageval1)
-        ball_speed *= 1.1
+        ante_up()
+
+
+# draw function of canvas
+def draw(canvas):
+    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity
+
+    canvas.fill(BLACK)
+    pygame.draw.line(canvas, WHITE, [WIDTH / 2, 0], [WIDTH / 2, HEIGHT], 1)
+    pygame.draw.line(canvas, WHITE, [PAD_WIDTH, 0], [PAD_WIDTH, HEIGHT], 1)
+    pygame.draw.line(canvas, WHITE, [WIDTH - PAD_WIDTH, 0], [WIDTH - PAD_WIDTH, HEIGHT], 1)
+    pygame.draw.circle(canvas, WHITE, [WIDTH // 2, HEIGHT // 2], 70, 1)
+
+    # draw paddles and ball
+    pygame.draw.circle(canvas, RED, ball_pos, 20, 0)
+    pygame.draw.polygon(canvas, GREEN, [[paddle1_pos[0] - HALF_PAD_WIDTH, paddle1_pos[1] - HALF_PAD_HEIGHT],
+                                        [paddle1_pos[0] - HALF_PAD_WIDTH, paddle1_pos[1] + HALF_PAD_HEIGHT],
+                                        [paddle1_pos[0] + HALF_PAD_WIDTH, paddle1_pos[1] + HALF_PAD_HEIGHT],
+                                        [paddle1_pos[0] + HALF_PAD_WIDTH, paddle1_pos[1] - HALF_PAD_HEIGHT]], 0)
+    pygame.draw.polygon(canvas, GREEN, [[paddle2_pos[0] - HALF_PAD_WIDTH, paddle2_pos[1] - HALF_PAD_HEIGHT],
+                                        [paddle2_pos[0] - HALF_PAD_WIDTH, paddle2_pos[1] + HALF_PAD_HEIGHT],
+                                        [paddle2_pos[0] + HALF_PAD_WIDTH, paddle2_pos[1] + HALF_PAD_HEIGHT],
+                                        [paddle2_pos[0] + HALF_PAD_WIDTH, paddle2_pos[1] - HALF_PAD_HEIGHT]], 0)
 
     # update scores
     myfont1 = pygame.font.SysFont("Comic Sans MS", 20)
@@ -159,20 +197,7 @@ def draw(canvas):
     canvas.blit(label2, (470, 20))
 
 
-# keydown handler
-def keydown(event):
-    global paddle1_vel, paddle2_vel
-
-    if event.key == K_UP:
-        paddle2_vel = -PADDLE_SPEED
-    elif event.key == K_DOWN:
-        paddle2_vel = PADDLE_SPEED
-    elif event.key == K_w:
-        paddle1_vel = -PADDLE_SPEED
-    elif event.key == K_s:
-        paddle1_vel = PADDLE_SPEED
-
-
+'''
 # keyup handler
 def keyup(event):
     global paddle1_vel, paddle2_vel
@@ -181,22 +206,18 @@ def keyup(event):
         paddle1_vel = 0
     elif event.key in (K_UP, K_DOWN):
         paddle2_vel = 0
-
+'''
 
 init()
 
 # game loop
 while True:
 
+    game_processing()
     draw(window)
 
     for event in pygame.event.get():
-
-        if event.type == KEYDOWN:
-            keydown(event)
-        elif event.type == KEYUP:
-            keyup(event)
-        elif event.type == QUIT:
+        if event.type == QUIT:
             pygame.quit()
             sys.exit()
 
