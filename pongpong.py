@@ -1,4 +1,7 @@
-# PONG pygame
+"""
+Code originally by vinothpandian
+Modified by Lucian Reiter, Dec 3, 2022
+"""
 
 import random
 import pygame, sys
@@ -22,11 +25,11 @@ PAD_WIDTH = 8
 PAD_HEIGHT = 80
 HALF_PAD_WIDTH = PAD_WIDTH // 2
 HALF_PAD_HEIGHT = PAD_HEIGHT // 2
-GRAVITY = 0.1
-SPEED_CONSTANT = 4
+GRAVITY = 0.1  # How fast the ball falls.
+SPEED_CONSTANT = 4  # How fast the ball moves at the beginning of each match.
 PADDLE_SPEED = 8
 PARTITION_HEIGHT = 100
-VERTICAL_SKEW = 2.0
+VERTICAL_SKEW = 2.0  # How high/low the ball is skewed based on the paddle's speed and the distance to its edge.
 AI_DIFFICULTY = 0.2
 
 # global variables
@@ -39,17 +42,22 @@ paddle1_pos = 0
 paddle2_pos = 0
 l_score = 0
 r_score = 0
-paddle1ai = True
+paddle1ai = True  # Dictates that both sides start off as AI players.
 paddle2ai = True
 
 # canvas declaration
 window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption('Hello World')
+pygame.display.set_caption('Pong Pong')
 
 
 # helper function that spawns a ball, returns a position vector and a velocity vector
 # if right is True, spawn to the right, else spawn to the left
-def ball_init(right):
+def ball_init(right: bool) -> None:
+    """
+    This function runs every time a match ends. It is used to reset the playing field after a point is scored.
+
+    :right: Boolean. Whether the ball should be served from the left side or the right side.
+    """
     global ball_pos, ball_vel, ball_speed, gravity, paddle_speed  # these are vectors stored as lists
     ball_speed = SPEED_CONSTANT
     paddle_speed = PADDLE_SPEED
@@ -58,8 +66,6 @@ def ball_init(right):
     horizontal_momentum = ball_speed * math.cos(ball_direction)
     vertical_momentum = ball_speed * math.sin(ball_direction)
     gravity = GRAVITY
-    '''horz = random.randrange(2, 4)
-    vert = random.randrange(1, 3)'''
 
     if not right:
         horizontal_momentum = - horizontal_momentum
@@ -67,7 +73,9 @@ def ball_init(right):
     ball_vel = [horizontal_momentum, vertical_momentum]
 
 
-def ante_up():
+def ante_up() -> None:
+    """This function is to be used when the ball hits a paddle. It slightly increases the difficulty and ensures that
+    single matches don't extend infinitely."""
     global ball_speed, paddle_speed, gravity
     ball_speed += 0.5
     paddle_speed += 0.5
@@ -75,7 +83,8 @@ def ante_up():
 
 
 # define event handlers
-def init():
+def init() -> None:
+    """This function initializes the game."""
     global paddle1_pos, paddle2_pos, paddle1_vel, paddle2_vel, l_score, r_score  # these are floats
     global score1, score2  # these are ints
     paddle1_pos = [HALF_PAD_WIDTH - 1, HEIGHT // 2]
@@ -89,8 +98,9 @@ def init():
 
 
 # This is a simplification, even though it's annoying to be out of the main movement loop.
-def paddle_movement():
-    global paddle1_pos, paddle2_pos, keys, paddle1ai, paddle2ai
+def paddle_movement() -> None:
+    """This function controls the movement of the paddles."""
+    global paddle1_pos, paddle2_pos, paddle1ai, paddle2ai, keys
 
     if keys[K_UP] and paddle2_pos[1] > HALF_PAD_HEIGHT:
         if paddle2ai:
@@ -117,36 +127,47 @@ def paddle_movement():
         if paddle1_pos[1] > HEIGHT - HALF_PAD_HEIGHT:
             paddle1_pos[1] = HEIGHT - HALF_PAD_HEIGHT
 
-def simple_ai_paddle(rightpong):
+    # if the AI is controlling the paddle.
+    if paddle2ai:
+        simple_ai_paddle(True)
+    if paddle1ai:
+        simple_ai_paddle(False)
+
+
+def simple_ai_paddle(rightpong: bool) -> None:
+    """
+    This function controls the movement of the AI players.
+
+    :rightpong: Boolean. Whether the AI in question is for Paddle 1 or Paddle 2
+    """
     global paddle1_pos, paddle2_pos, ball_pos
-    ai_paddle_speed = int(min(paddle_speed * AI_DIFFICULTY * (1 + abs(paddle1_pos[1] - ball_pos[1]) / 100),paddle_speed))
+    ai_paddle_speed = int(
+        min(paddle_speed * AI_DIFFICULTY * (1 + abs(paddle1_pos[1] - ball_pos[1]) / 100), paddle_speed))
     if rightpong:
         if abs(paddle2_pos[1] - ball_pos[1]) > HALF_PAD_HEIGHT / 2:
             if paddle2_pos[1] > ball_pos[1]:
                 paddle2_pos[1] -= ai_paddle_speed
             else:
                 paddle2_pos[1] += ai_paddle_speed
-
     else:
-
         if abs(paddle1_pos[1] - ball_pos[1]) > HALF_PAD_HEIGHT / 2:
             if paddle1_pos[1] > ball_pos[1]:
                 paddle1_pos[1] -= ai_paddle_speed
             else:
                 paddle1_pos[1] += ai_paddle_speed
 
-def game_processing():
-    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity, keys
 
+def game_processing() -> None:
+    """
+    This function does most of the game's calculations.
+    These have to do with the ball's movement, momentum, and collision.
+    """
+    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity, keys
     keys = pygame.key.get_pressed()
 
     # update paddle's vertical position, keep paddle on the screen
     paddle_movement()
 
-    if paddle2ai:
-        simple_ai_paddle(True)
-    if paddle1ai:
-        simple_ai_paddle(False)
     # update ball
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
@@ -159,8 +180,6 @@ def game_processing():
     if int(ball_pos[1]) >= HEIGHT + 1 - BALL_RADIUS:
         ball_pos[1] = HEIGHT - BALL_RADIUS - 1
         ball_vel[1] = - abs(ball_vel[1])
-
-    # ball collision check on gutters or paddles
 
     # left collider
     if int(ball_pos[0]) <= 1:
@@ -204,16 +223,14 @@ def game_processing():
             ball_vel[0] = abs(ball_vel[0])
 
 
-
 # draw function of canvas
-def draw(canvas):
+def draw(canvas) -> None:
     global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity
 
     canvas.fill(BLACK)
     pygame.draw.line(canvas, WHITE, [PAD_WIDTH, 0], [PAD_WIDTH, HEIGHT], 1)
     pygame.draw.line(canvas, RED, [WIDTH // 2, HEIGHT - PARTITION_HEIGHT], [WIDTH // 2, HEIGHT], 5)
     pygame.draw.line(canvas, WHITE, [WIDTH - PAD_WIDTH, 0], [WIDTH - PAD_WIDTH, HEIGHT], 1)
-    # pygame.draw.circle(canvas, WHITE, [WIDTH // 2, HEIGHT // 2], 70, 1)
 
     # draw paddles and ball
     pygame.draw.circle(canvas, RED, ball_pos, 20, 0)
@@ -234,18 +251,6 @@ def draw(canvas):
     myfont2 = pygame.font.SysFont("Comic Sans MS", 20)
     label2 = myfont2.render("Score " + str(r_score), 1, (255, 255, 0))
     canvas.blit(label2, (470, 20))
-
-
-'''
-# keyup handler
-def keyup(event):
-    global paddle1_vel, paddle2_vel
-
-    if event.key in (K_w, K_s):
-        paddle1_vel = 0
-    elif event.key in (K_UP, K_DOWN):
-        paddle2_vel = 0
-'''
 
 init()
 
