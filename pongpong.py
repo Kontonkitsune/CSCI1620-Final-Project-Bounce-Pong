@@ -27,6 +27,7 @@ SPEED_CONSTANT = 4
 PADDLE_SPEED = 8
 PARTITION_HEIGHT = 100
 VERTICAL_SKEW = 2.0
+AI_DIFFICULTY = 0.2
 
 # global variables
 paddle_speed = PADDLE_SPEED
@@ -38,6 +39,8 @@ paddle1_pos = 0
 paddle2_pos = 0
 l_score = 0
 r_score = 0
+paddle1ai = True
+paddle2ai = True
 
 # canvas declaration
 window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
@@ -47,8 +50,9 @@ pygame.display.set_caption('Hello World')
 # helper function that spawns a ball, returns a position vector and a velocity vector
 # if right is True, spawn to the right, else spawn to the left
 def ball_init(right):
-    global ball_pos, ball_vel, ball_speed, gravity  # these are vectors stored as lists
+    global ball_pos, ball_vel, ball_speed, gravity, paddle_speed  # these are vectors stored as lists
     ball_speed = SPEED_CONSTANT
+    paddle_speed = PADDLE_SPEED
     ball_pos = [WIDTH // 2, HEIGHT // 2]
     ball_direction = random.random() * math.pi / 4
     horizontal_momentum = ball_speed * math.cos(ball_direction)
@@ -86,25 +90,50 @@ def init():
 
 # This is a simplification, even though it's annoying to be out of the main movement loop.
 def paddle_movement():
-    global paddle1_pos, paddle2_pos, keys
+    global paddle1_pos, paddle2_pos, keys, paddle1ai, paddle2ai
 
     if keys[K_UP] and paddle2_pos[1] > HALF_PAD_HEIGHT:
+        if paddle2ai:
+            paddle2ai = False
         paddle2_pos[1] -= PADDLE_SPEED
         if paddle2_pos[1] < HALF_PAD_HEIGHT:
             paddle2_pos[1] = HALF_PAD_HEIGHT
     if keys[K_DOWN] and paddle2_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
+        if paddle2ai:
+            paddle2ai = False
         paddle2_pos[1] += PADDLE_SPEED
         if paddle2_pos[1] > HEIGHT - HALF_PAD_HEIGHT:
             paddle2_pos[1] = HEIGHT - HALF_PAD_HEIGHT
     if keys[K_w] and paddle1_pos[1] > HALF_PAD_HEIGHT:
+        if paddle1ai:
+            paddle1ai = False
         paddle1_pos[1] -= PADDLE_SPEED
         if paddle1_pos[1] < HALF_PAD_HEIGHT:
             paddle1_pos[1] = HALF_PAD_HEIGHT
     if keys[K_s] and paddle1_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
+        if paddle1ai:
+            paddle1ai = False
         paddle1_pos[1] += PADDLE_SPEED
         if paddle1_pos[1] > HEIGHT - HALF_PAD_HEIGHT:
             paddle1_pos[1] = HEIGHT - HALF_PAD_HEIGHT
 
+def simple_ai_paddle(rightpong):
+    global paddle1_pos, paddle2_pos, ball_pos
+    ai_paddle_speed = int(min(paddle_speed * AI_DIFFICULTY * (1 + abs(paddle1_pos[1] - ball_pos[1]) / 100),paddle_speed))
+    if rightpong:
+        if abs(paddle2_pos[1] - ball_pos[1]) > HALF_PAD_HEIGHT / 2:
+            if paddle2_pos[1] > ball_pos[1]:
+                paddle2_pos[1] -= ai_paddle_speed
+            else:
+                paddle2_pos[1] += ai_paddle_speed
+
+    else:
+
+        if abs(paddle1_pos[1] - ball_pos[1]) > HALF_PAD_HEIGHT / 2:
+            if paddle1_pos[1] > ball_pos[1]:
+                paddle1_pos[1] -= ai_paddle_speed
+            else:
+                paddle1_pos[1] += ai_paddle_speed
 
 def game_processing():
     global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity, keys
@@ -114,6 +143,10 @@ def game_processing():
     # update paddle's vertical position, keep paddle on the screen
     paddle_movement()
 
+    if paddle2ai:
+        simple_ai_paddle(True)
+    if paddle1ai:
+        simple_ai_paddle(False)
     # update ball
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
