@@ -25,6 +25,8 @@ HALF_PAD_HEIGHT = PAD_HEIGHT // 2
 GRAVITY = 0.1
 SPEED_CONSTANT = 4
 PADDLE_SPEED = 8
+PARTITION_HEIGHT = 100
+VERTICAL_SKEW = 2.0
 
 # global variables
 paddle_speed = PADDLE_SPEED
@@ -83,10 +85,8 @@ def init():
 
 
 # This is a simplification, even though it's annoying to be out of the main movement loop.
-def movement():
-    global paddle1_pos, paddle2_pos
-
-    keys = pygame.key.get_pressed()
+def paddle_movement():
+    global paddle1_pos, paddle2_pos, keys
 
     if keys[K_UP] and paddle2_pos[1] > HALF_PAD_HEIGHT:
         paddle2_pos[1] -= PADDLE_SPEED
@@ -107,25 +107,12 @@ def movement():
 
 
 def game_processing():
-    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity
+    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity, keys
 
-
+    keys = pygame.key.get_pressed()
 
     # update paddle's vertical position, keep paddle on the screen
-    movement()
-    '''if HALF_PAD_HEIGHT < paddle1_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
-        paddle1_pos[1] += paddle1_vel
-    elif paddle1_pos[1] == HALF_PAD_HEIGHT and paddle1_vel > 0:
-        paddle1_pos[1] += paddle1_vel
-    elif paddle1_pos[1] == HEIGHT - HALF_PAD_HEIGHT and paddle1_vel < 0:
-        paddle1_pos[1] += paddle1_vel
-
-    if HALF_PAD_HEIGHT < paddle2_pos[1] < HEIGHT - HALF_PAD_HEIGHT:
-        paddle2_pos[1] += paddle2_vel
-    elif paddle2_pos[1] == HALF_PAD_HEIGHT and paddle2_vel > 0:
-        paddle2_pos[1] += paddle2_vel
-    elif paddle2_pos[1] == HEIGHT - HALF_PAD_HEIGHT and paddle2_vel < 0:
-        paddle2_pos[1] += paddle2_vel'''
+    paddle_movement()
 
     # update ball
     ball_pos[0] += int(ball_vel[0])
@@ -138,7 +125,7 @@ def game_processing():
         ball_vel[1] = abs(ball_vel[1]) - 1
     if int(ball_pos[1]) >= HEIGHT + 1 - BALL_RADIUS:
         ball_pos[1] = HEIGHT - BALL_RADIUS - 1
-        ball_vel[1] =  - abs(ball_vel[1])
+        ball_vel[1] = - abs(ball_vel[1])
 
     # ball collision check on gutters or paddles
 
@@ -147,10 +134,13 @@ def game_processing():
         r_score += 1
         ball_init(True)
     elif int(ball_pos[0]) <= BALL_RADIUS + PAD_WIDTH and int(ball_pos[1]) in range(paddle1_pos[1] - HALF_PAD_HEIGHT,
-                                                                                 paddle1_pos[1] + HALF_PAD_HEIGHT, 1):
-        # ball_vel[0] = abs(ball_vel[0])
+                                                                                   paddle1_pos[1] + HALF_PAD_HEIGHT, 1):
         storageval1 = math.radians(ball_pos[1] - paddle1_pos[1])
-        ball_vel[1] = ball_speed * math.sin(storageval1)
+        ball_vel[1] = VERTICAL_SKEW * ball_speed * math.sin(storageval1)
+        if keys[K_w]:
+            ball_vel[1] -= 2 * VERTICAL_SKEW
+        elif keys[K_s]:
+            ball_vel[1] += 2 * VERTICAL_SKEW
         ball_vel[0] = ball_speed * math.cos(storageval1)
         ante_up()
 
@@ -161,9 +151,25 @@ def game_processing():
     elif int(ball_pos[0]) >= WIDTH + 1 - BALL_RADIUS - PAD_WIDTH and int(ball_pos[1]) in range(
             paddle2_pos[1] - HALF_PAD_HEIGHT, paddle2_pos[1] + HALF_PAD_HEIGHT, 1):
         storageval1 = math.radians(ball_pos[1] - paddle2_pos[1])
-        ball_vel[1] = ball_speed * math.sin(storageval1)
+        ball_vel[1] = VERTICAL_SKEW * ball_speed * math.sin(storageval1)
+        if keys[K_UP]:
+            ball_vel[1] -= 2 * VERTICAL_SKEW
+        elif keys[K_DOWN]:
+            ball_vel[1] += 2 * VERTICAL_SKEW
         ball_vel[0] = - ball_speed * math.cos(storageval1)
         ante_up()
+
+    # central collider
+    if abs(int(ball_pos[0]) - (WIDTH // 2)) < BALL_RADIUS and int(ball_pos[1]) > HEIGHT - PARTITION_HEIGHT:
+        if abs(ball_vel[1]) < 4 + (5 * gravity):
+            ball_vel[1] = - 4 - (5 * gravity)
+        if ball_pos[0] < WIDTH // 2:
+            ball_pos[0] = (WIDTH // 2) - BALL_RADIUS
+            ball_vel[0] = - abs(ball_vel[0])
+        else:
+            ball_pos[0] = (WIDTH // 2) + BALL_RADIUS
+            ball_vel[0] = abs(ball_vel[0])
+
 
 
 # draw function of canvas
@@ -171,10 +177,10 @@ def draw(canvas):
     global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity
 
     canvas.fill(BLACK)
-    pygame.draw.line(canvas, WHITE, [WIDTH / 2, 0], [WIDTH / 2, HEIGHT], 1)
     pygame.draw.line(canvas, WHITE, [PAD_WIDTH, 0], [PAD_WIDTH, HEIGHT], 1)
+    pygame.draw.line(canvas, RED, [WIDTH // 2, HEIGHT - PARTITION_HEIGHT], [WIDTH // 2, HEIGHT], 5)
     pygame.draw.line(canvas, WHITE, [WIDTH - PAD_WIDTH, 0], [WIDTH - PAD_WIDTH, HEIGHT], 1)
-    pygame.draw.circle(canvas, WHITE, [WIDTH // 2, HEIGHT // 2], 70, 1)
+    # pygame.draw.circle(canvas, WHITE, [WIDTH // 2, HEIGHT // 2], 70, 1)
 
     # draw paddles and ball
     pygame.draw.circle(canvas, RED, ball_pos, 20, 0)
