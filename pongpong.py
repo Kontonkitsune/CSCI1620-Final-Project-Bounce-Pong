@@ -21,6 +21,7 @@ PAD_WIDTH = 8
 PAD_HEIGHT = 80
 HALF_PAD_WIDTH = PAD_WIDTH // 2
 HALF_PAD_HEIGHT = PAD_HEIGHT // 2
+GRAVITY = 1
 ball_pos = [0, 0]
 ball_vel = [0, 0]
 paddle1_vel = 0
@@ -90,6 +91,9 @@ def draw(canvas):
     ball_pos[0] += int(ball_vel[0])
     ball_pos[1] += int(ball_vel[1])
 
+    # gravity calculation
+    ball_vel[1] += 0.1
+
     # draw paddles and ball
     pygame.draw.circle(canvas, RED, ball_pos, 20, 0)
     pygame.draw.polygon(canvas, GREEN, [[paddle1_pos[0] - HALF_PAD_WIDTH, paddle1_pos[1] - HALF_PAD_HEIGHT],
@@ -103,11 +107,15 @@ def draw(canvas):
 
     # ball collision check on top and bottom walls
     if int(ball_pos[1]) <= BALL_RADIUS:
+        ball_pos[1] = BALL_RADIUS + 1
         ball_vel[1] = - ball_vel[1]
     if int(ball_pos[1]) >= HEIGHT + 1 - BALL_RADIUS:
+        ball_pos[1] = HEIGHT - BALL_RADIUS - 1
         ball_vel[1] = -ball_vel[1]
 
     # ball collison check on gutters or paddles
+
+    # left collider
     if int(ball_pos[0]) <= BALL_RADIUS + PAD_WIDTH and int(ball_pos[1]) in range(paddle1_pos[1] - HALF_PAD_HEIGHT,
                                                                                  paddle1_pos[1] + HALF_PAD_HEIGHT, 1):
         ball_vel[0] = -ball_vel[0]
@@ -117,6 +125,7 @@ def draw(canvas):
         r_score += 1
         ball_init(True)
 
+    # right collider
     if int(ball_pos[0]) >= WIDTH + 1 - BALL_RADIUS - PAD_WIDTH and int(ball_pos[1]) in range(
             paddle2_pos[1] - HALF_PAD_HEIGHT, paddle2_pos[1] + HALF_PAD_HEIGHT, 1):
         ball_vel[0] = -ball_vel[0]
