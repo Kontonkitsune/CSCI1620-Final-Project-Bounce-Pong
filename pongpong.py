@@ -14,6 +14,7 @@ fps = pygame.time.Clock()
 # colors
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
 
@@ -30,7 +31,6 @@ SPEED_CONSTANT = 4  # How fast the ball moves at the beginning of each match.
 PADDLE_SPEED = 8
 PARTITION_HEIGHT = 100
 VERTICAL_SKEW = 2.0  # How high/low the ball is skewed based on the paddle's speed and the distance to its edge.
-AI_DIFFICULTY = 0.2
 
 # global variables
 paddle_speed = PADDLE_SPEED
@@ -44,6 +44,15 @@ l_score = 0
 r_score = 0
 paddle1ai = True  # Dictates that both sides start off as AI players.
 paddle2ai = True
+
+game_state = False # true if a game is active.
+l_total_score = 0
+r_total_score = 0
+cursor_pos = 1
+cpu_difficulty = 3
+game_length = 5
+winner = ""
+keydown = 0 # this just prevents key stuttering and allows the menu to be navigable.
 
 # canvas declaration
 window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
@@ -85,12 +94,14 @@ def ante_up() -> None:
 # define event handlers
 def init() -> None:
     """This function initializes the game."""
-    global paddle1_pos, paddle2_pos, paddle1_vel, paddle2_vel, l_score, r_score  # these are floats
-    global score1, score2  # these are ints
+    global paddle1_pos, paddle2_pos, l_score, r_score, paddle1ai, paddle2ai
+
     paddle1_pos = [HALF_PAD_WIDTH - 1, HEIGHT // 2]
     paddle2_pos = [WIDTH + 1 - HALF_PAD_WIDTH, HEIGHT // 2]
     l_score = 0
     r_score = 0
+    paddle1ai = True
+    paddle2ai = True
     if random.randrange(0, 2) == 0:
         ball_init(True)
     else:
@@ -142,7 +153,7 @@ def simple_ai_paddle(rightpong: bool) -> None:
     """
     global paddle1_pos, paddle2_pos, ball_pos
     ai_paddle_speed = int(
-        min(paddle_speed * AI_DIFFICULTY * (1 + abs(paddle1_pos[1] - ball_pos[1]) / 100), paddle_speed))
+        min(paddle_speed * (cpu_difficulty / 10) * (1 + abs(paddle1_pos[1] - ball_pos[1]) / 100), paddle_speed))
     if rightpong:
         if abs(paddle2_pos[1] - ball_pos[1]) > HALF_PAD_HEIGHT / 2:
             if paddle2_pos[1] > ball_pos[1]:
@@ -163,7 +174,12 @@ def game_processing() -> None:
     These have to do with the ball's movement, momentum, and collision.
     """
     global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity, keys
+    global winner, game_state, l_total_score, r_total_score
     keys = pygame.key.get_pressed()
+    if keys[K_ESCAPE]:
+        game_state = False
+    # draw the game
+    draw_game(window)
 
     # update paddle's vertical position, keep paddle on the screen
     paddle_movement()
@@ -222,10 +238,21 @@ def game_processing() -> None:
             ball_pos[0] = (WIDTH // 2) + BALL_RADIUS
             ball_vel[0] = abs(ball_vel[0])
 
+    if l_score > game_length // 2:
+        winner = "Left"
+        game_state = False
+        l_total_score += 1
+        init()
+    elif r_score > game_length // 2:
+        winner = "Right"
+        r_total_score += 1
+        game_state = False
+        init()
+
 
 # draw function of canvas
-def draw(canvas) -> None:
-    global paddle1_pos, paddle2_pos, ball_pos, ball_vel, l_score, r_score, ball_speed, gravity
+def draw_game(canvas) -> None:
+    global paddle1_pos, paddle2_pos, ball_pos, l_score, r_score
 
     canvas.fill(BLACK)
     pygame.draw.line(canvas, WHITE, [PAD_WIDTH, 0], [PAD_WIDTH, HEIGHT], 1)
@@ -242,24 +269,90 @@ def draw(canvas) -> None:
                                         [paddle2_pos[0] - HALF_PAD_WIDTH, paddle2_pos[1] + HALF_PAD_HEIGHT],
                                         [paddle2_pos[0] + HALF_PAD_WIDTH, paddle2_pos[1] + HALF_PAD_HEIGHT],
                                         [paddle2_pos[0] + HALF_PAD_WIDTH, paddle2_pos[1] - HALF_PAD_HEIGHT]], 0)
+    if game_state:
+        # update scores
+        myfont1 = pygame.font.SysFont("Comic Sans MS", 20)
+        canvas.blit(myfont1.render("Score " + str(l_score), True, WHITE), (50, 20))
+        canvas.blit(myfont1.render("Score " + str(r_score), True, WHITE), (470, 20))
 
-    # update scores
-    myfont1 = pygame.font.SysFont("Comic Sans MS", 20)
-    label1 = myfont1.render("Score " + str(l_score), 1, (255, 255, 0))
-    canvas.blit(label1, (50, 20))
 
-    myfont2 = pygame.font.SysFont("Comic Sans MS", 20)
-    label2 = myfont2.render("Score " + str(r_score), 1, (255, 255, 0))
-    canvas.blit(label2, (470, 20))
+def menu_processing():
+    global cursor_pos, keys, keydown, cpu_difficulty, game_length, game_state
+    draw_menu(window)
+    keys = pygame.key.get_pressed()
+    if keydown == 0:
+        cancursormove = True
+    else:
+        cancursormove = False
+
+    # move cursor
+    if (keys[K_UP] or keys[K_w]) and cancursormove:
+        cursor_pos -= 1
+        if cursor_pos < 1:
+            cursor_pos = 3
+    if (keys[K_DOWN] or keys[K_s]) and cancursormove:
+        cursor_pos += 1
+        if cursor_pos > 3:
+            cursor_pos = 1
+
+    # change settings
+    if (keys[K_RIGHT] or keys[K_d]) and cancursormove:
+        if cursor_pos == 1:
+            game_state = True
+        elif cursor_pos == 2:
+            cpu_difficulty += 1
+            if cpu_difficulty > 10:
+                cpu_difficulty = 10
+        elif cursor_pos == 3:
+            game_length += 2
+            if game_length > 9:
+                game_length = 9
+    if (keys[K_LEFT] or keys[K_a]) and cancursormove:
+        if cursor_pos == 1:
+            game_state = True
+        elif cursor_pos == 2:
+            cpu_difficulty -= 1
+            if cpu_difficulty < -1:
+                cpu_difficulty = -1
+        elif cursor_pos == 3:
+            game_length -= 2
+            if game_length < 1:
+                game_length = 1
+
+    if keys[K_UP] or keys[K_DOWN] or keys[K_RIGHT] or keys[K_LEFT] or keys[K_w] or keys[K_s] or keys[K_a] or keys[K_d]:
+        keydown += 1
+    else:
+        keydown = 0
+
+
+def draw_menu(canvas) -> None:
+
+    draw_game(canvas)
+
+    myfont = pygame.font.SysFont("Comic Sans MS", 20)
+    canvas.blit(myfont.render("Wins: " + str(l_total_score), True, YELLOW), (50, 20))
+    canvas.blit(myfont.render("Wins: " + str(r_total_score), True, YELLOW), (470, 20))
+    if winner != "":
+        canvas.blit(myfont.render("Winner: " + winner, True, YELLOW), (240, 20))
+    myfontbig = pygame.font.SysFont("Comic Sans MS", 30)
+    canvas.blit(myfontbig.render("Pong Pong", True, (0, 255, 0)),
+                (PAD_WIDTH + 20, 50))
+    canvas.blit(myfontbig.render("Play game", True, YELLOW if cursor_pos == 1 else WHITE),
+                (PAD_WIDTH + 20, 100))
+    canvas.blit(myfontbig.render("CPU Difficulty: " + str(cpu_difficulty), True, YELLOW if cursor_pos == 2 else WHITE),
+                (PAD_WIDTH + 20, 150))
+    canvas.blit(myfontbig.render("Best of: " + str(game_length), True, YELLOW if cursor_pos == 3 else WHITE),
+                (PAD_WIDTH + 20, 200))
 
 init()
 
 # game loop
 while True:
 
-    game_processing()
-    draw(window)
-
+    if game_state:
+        game_processing()
+    else:
+        menu_processing()
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
