@@ -267,6 +267,7 @@ def game_processing() -> None:
 
 
 def draw_game(canvas) -> None:
+    """This function draws the game."""
     global paddle1_pos, paddle2_pos, ball_pos, l_score, r_score
 
     canvas.fill(BLACK)
@@ -291,7 +292,8 @@ def draw_game(canvas) -> None:
         canvas.blit(myfont1.render("Score " + str(r_score), True, WHITE), (470, 20))
 
 
-def menu_processing():
+def menu_processing() -> None:
+    """This function controls the menu."""
     global cursor_pos, keys, keydown, cpu_difficulty, game_length, game_state
     global gravity_mod, speed_mod, size_mod, partition_height_mod
     draw_menu(window)
@@ -372,7 +374,11 @@ def menu_processing():
 
 
 def draw_menu(canvas) -> None:
+    """
+    This function is used to draw the menu. It calls the draw_game() function since the background includes the game.
 
+    :param canvas: What to draw on.
+    """
     draw_game(canvas)
 
     myfont = pygame.font.SysFont("Comic Sans MS", 20)
